@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "962409696059",
+    "firebase_url": "https://restaurhunter.firebaseio.com",
+    "project_id": "restaurhunter",
+    "storage_bucket": "restaurhunter.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:962409696059:android:3ee999efac90e575",
+        "android_client_info": {
+          "package_name": "com.sarthakb.restaurhunt"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "962409696059-1tkgsmni82rsof5ojlingntb8koioc7m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKpfy4zHvBAAPotQqJ342lUQFJHVSlS44"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
