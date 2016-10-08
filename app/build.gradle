@@ -36,6 +36,8 @@ dependencies {
         transitive = true
     }
     compile 'com.jakewharton:butterknife:8.4.0'
+    compile 'com.github.kikoso:SwipeableCards:1.1-RELEASE@aar'
+
 
 }
 

@@ -1,9 +1,14 @@
 package com.sarthakb.restaurhunt;
 
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 
+import com.andtinder.model.CardModel;
+import com.andtinder.view.CardContainer;
+import com.andtinder.view.SimpleCardStackAdapter;
 import com.mikepenz.materialdrawer.AccountHeader;
 import com.mikepenz.materialdrawer.AccountHeaderBuilder;
 import com.mikepenz.materialdrawer.Drawer;
@@ -16,7 +21,7 @@ import butterknife.ButterKnife;
 
 public class MainActivity extends AppCompatActivity {
 
-
+    CardContainer mCardContainer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,6 +30,29 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar_main);
         toolbar.setTitle("Restaurhunt");
         setSupportActionBar(toolbar);
+
+        mCardContainer = (CardContainer) findViewById(R.id.cardContainerView);
+        CardModel card = new CardModel("Hello", "hi", ContextCompat.getDrawable(this, R.drawable.picture1));
+        card.setOnCardDimissedListener(new CardModel.OnCardDimissedListener() {
+            @Override
+            public void onLike() {
+                Log.d("Swipeable Card", "I liked it");
+            }
+
+            @Override
+            public void onDislike() {
+                Log.d("Swipeable Card", "I disliked it");
+
+            }
+        });
+
+        SimpleCardStackAdapter adapter = new SimpleCardStackAdapter(this);
+        adapter.add(card);
+        mCardContainer.setAdapter(adapter);
+
+//        https://github.com/kikoso/Swipeable-Cards
+//        https://github.com/mikepenz/MaterialDrawer
+
 
         AccountHeader profileHeader = new AccountHeaderBuilder()
                 .withActivity(this)
