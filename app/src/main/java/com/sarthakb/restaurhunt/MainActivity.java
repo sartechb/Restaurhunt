@@ -46,6 +46,15 @@ public class MainActivity extends AppCompatActivity{
 
         flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
 
+        // Initialize Firebase systems
+        FirebaseStorage storage = FirebaseStorage.getInstance();
+        final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+        final StorageReference storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
+
+        // Initialize current user
+        final DatabaseReference localUser = databaseReference.child("users").child("user0");
+
+        // Initialize FoodItems
         final FoodItem item1 = new FoodItem();
         item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
         final FoodItem item2 = new FoodItem();
@@ -53,19 +62,17 @@ public class MainActivity extends AppCompatActivity{
         final FoodItem item3 = new FoodItem();
         item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
 
+        // Initialize card container
         items = new ArrayList<>();
-
-
+        // Add cards
         items.add(item1);
         items.add(item2);
         items.add(item3);
 
+        // Initialize itemCounter
         final LocalData ld = new LocalData();
         ld.itemCounter = 0;
 
-        FirebaseStorage storage = FirebaseStorage.getInstance();
-        final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
-        final StorageReference storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
         storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
             @Override
             public void onSuccess(Uri uri) {
@@ -115,28 +122,34 @@ public class MainActivity extends AppCompatActivity{
 
             @Override
             public void onLeftCardExit(Object o) {
+
                 items.remove(0);
                 ld.itemCounter++;
 
                 myAppAdapter.notifyDataSetChanged();
-
             }
+
+            // when app opens, contact firebase and get all the pictures
+            // sort those pictures to determine which one to display next
 
             @Override
             public void onRightCardExit(Object o) {
 
+                DatabaseReference currentCard = databaseReference.child("cards").child("card"+Integer.toString(ld.itemCounter));
+
                 // save object in history, pass to server to save (get Sarthak to save locally using his Android voodoo)
+                localUser.child("history").child("hCard" + Integer.toString(localUser.child("historyCounter").)).setValue(currentCard);
+
 
                 // increment number of likes
                 items.get(0).setNumLikes(items.get(0).getNumLikes() + 1);
 
                 // TODO: write back object to server to update # of likes
-                databaseReference.child("card"+Integer.toString(ld.itemCounter)).child("numLikes").setValue(items.get(0).getNumLikes());
-
-                // Handle next feed item, call the function
+                currentCard.child("numLikes").setValue(items.get(0).getNumLikes());
 
                 items.remove(0);
                 ld.itemCounter++;
+
 
                 myAppAdapter.notifyDataSetChanged();
 
