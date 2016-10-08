@@ -28,6 +28,7 @@ import com.mikepenz.materialdrawer.Drawer;
 import com.mikepenz.materialdrawer.DrawerBuilder;
 import com.mikepenz.materialdrawer.model.PrimaryDrawerItem;
 import com.mikepenz.materialdrawer.model.ProfileDrawerItem;
+import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -69,11 +70,7 @@ public class MainActivity extends AppCompatActivity{
         items.add(item2);
         items.add(item3);
 
-        // Upload single picture
-        Intent intent = new Intent();
-        intent.setType("image/*");
-        intent.setAction(Intent.ACTION_GET_CONTENT);
-        startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
+
 
         final LocalData ld = new LocalData();
         ld.itemCounter = 0;
@@ -101,6 +98,7 @@ public class MainActivity extends AppCompatActivity{
 
         AccountHeader profileHeader = new AccountHeaderBuilder()
                 .withActivity(this)
+                .withHeaderBackground(R.drawable.otriangles)
                 .addProfiles(
                         new ProfileDrawerItem()
                         .withName("Test McTestFace")
@@ -120,6 +118,19 @@ public class MainActivity extends AppCompatActivity{
                 .withActionBarDrawerToggle(true)
                 .withAccountHeader(profileHeader)
                 .addDrawerItems(imagesItem, uploadItem, myImagesItem)
+                .withOnDrawerItemClickListener(new Drawer.OnDrawerItemClickListener() {
+                    @Override
+                    public boolean onItemClick(View view, int position, IDrawerItem drawerItem) {
+                        if(drawerItem.getIdentifier() == 2){
+                            // Upload single picture
+                            Intent intent = new Intent();
+                            intent.setType("image/*");
+                            intent.setAction(Intent.ACTION_GET_CONTENT);
+                            startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
+                        }
+                        return false;
+                    }
+                })
                 .build();
 
         myAppAdapter = new MyAppAdapter(items, MainActivity.this);
