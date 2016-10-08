@@ -39,16 +39,23 @@ public class MainActivity extends AppCompatActivity{
     ArrayList<FoodItem> items;
     MyAppAdapter myAppAdapter;
     private int PICK_IMAGE_REQUEST = 1;
-    FirebaseStorage storage;
-    StorageReference storageRef;
+    static FirebaseStorage storage;
+    static StorageReference storageRef;
+    static FirebaseDatabase database;
+    static DatabaseReference databaseRef;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         storage = FirebaseStorage.getInstance();
         storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
+        database = FirebaseDatabase.getInstance();
+        databaseRef = database.getReference();
+
+
         Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar_main);
         toolbar.setTitle("Restaurhunt");
         setSupportActionBar(toolbar);
@@ -192,10 +199,12 @@ public class MainActivity extends AppCompatActivity{
                     public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                         // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
                         Uri downloadUrl = taskSnapshot.getDownloadUrl();
-                        FoodItem newItem = new FoodItem();
-                        newItem.setImageUrl(downloadUrl.toString());
-
-
+                        if (downloadUrl != null) {
+                            FoodItem newItem = new FoodItem();
+                            newItem.setImageUrl(downloadUrl.toString());
+                            int last_index = downloadUrl.getPath().split("/").length - 1;
+                            databaseRef.child("cards/" + downloadUrl.getPath().split("/")[last_index]).setValue(newItem);
+                        }
                     }
                 });
             }
