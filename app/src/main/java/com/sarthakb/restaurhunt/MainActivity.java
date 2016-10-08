@@ -1,29 +1,39 @@
 package com.sarthakb.restaurhunt;
 
-import android.support.v4.content.ContextCompat;
+import android.content.Context;
+import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.ImageView;
 
-import com.andtinder.model.CardModel;
-import com.andtinder.view.CardContainer;
-import com.andtinder.view.SimpleCardStackAdapter;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.lorentzos.flingswipe.SwipeFlingAdapterView;
 import com.mikepenz.materialdrawer.AccountHeader;
 import com.mikepenz.materialdrawer.AccountHeaderBuilder;
 import com.mikepenz.materialdrawer.Drawer;
 import com.mikepenz.materialdrawer.DrawerBuilder;
 import com.mikepenz.materialdrawer.model.PrimaryDrawerItem;
 import com.mikepenz.materialdrawer.model.ProfileDrawerItem;
+import com.squareup.picasso.Picasso;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
+import java.util.ArrayList;
+import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
 
-    CardContainer mCardContainer;
+public class MainActivity extends AppCompatActivity{
+
+    SwipeFlingAdapterView flingContainer;
+    ArrayList<FoodItem> items;
+    MyAppAdapter myAppAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,12 +43,31 @@ public class MainActivity extends AppCompatActivity {
         toolbar.setTitle("Restaurhunt");
         setSupportActionBar(toolbar);
 
+        flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
+
+        final FoodItem item1 = new FoodItem();
+        item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
+        final FoodItem item2 = new FoodItem();
+        item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
+        final FoodItem item3 = new FoodItem();
+        item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
+
+        items = new ArrayList<>();
+
+
+        items.add(item1);
+        items.add(item2);
+        items.add(item3);
+
+
+
         FirebaseStorage storage = FirebaseStorage.getInstance();
         StorageReference storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
-        storageRef.child("images/1.jpeg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+        storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
             @Override
             public void onSuccess(Uri uri) {
                 // Got the download URL for 'users/me/profile.png'
+//                item2.setImageUrl(uri.toString());
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -46,26 +75,6 @@ public class MainActivity extends AppCompatActivity {
                 // Handle any errors
             }
         });
-
-
-        mCardContainer = (CardContainer) findViewById(R.id.cardContainerView);
-        CardModel card = new CardModel("Hello", "hi", ContextCompat.getDrawable(this, R.drawable.picture1));
-        card.setOnCardDimissedListener(new CardModel.OnCardDimissedListener() {
-            @Override
-            public void onLike() {
-                Log.d("Swipeable Card", "I liked it");
-            }
-
-            @Override
-            public void onDislike() {
-                Log.d("Swipeable Card", "I disliked it");
-
-            }
-        });
-
-        SimpleCardStackAdapter adapter = new SimpleCardStackAdapter(this);
-        adapter.add(card);
-        mCardContainer.setAdapter(adapter);
 
 //        https://github.com/kikoso/Swipeable-Cards
 //        https://github.com/mikepenz/MaterialDrawer
@@ -92,5 +101,91 @@ public class MainActivity extends AppCompatActivity {
                 .withAccountHeader(profileHeader)
                 .addDrawerItems(imagesItem, uploadItem, myImagesItem)
                 .build();
+
+        myAppAdapter = new MyAppAdapter(items, MainActivity.this);
+        flingContainer.setAdapter(myAppAdapter);
+        flingContainer.setFlingListener(new SwipeFlingAdapterView.onFlingListener() {
+            @Override
+            public void removeFirstObjectInAdapter() {
+
+            }
+
+            @Override
+            public void onLeftCardExit(Object o) {
+                items.remove(0);
+                myAppAdapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onRightCardExit(Object o) {
+                items.remove(0);
+                myAppAdapter.notifyDataSetChanged();
+
+            }
+
+            @Override
+            public void onAdapterAboutToEmpty(int i) {
+
+            }
+
+            @Override
+            public void onScroll(float v) {
+
+            }
+        });
+
     }
+
+    public static class ViewHolder {
+        public ImageView cardImage;
+    }
+
+    public class MyAppAdapter extends BaseAdapter {
+
+        public List<FoodItem> foodItemList;
+        public Context context;
+
+        public MyAppAdapter(List<FoodItem> foodItemList, Context context) {
+            this.foodItemList = foodItemList;
+            this.context = context;
+        }
+
+        @Override
+        public int getCount() {
+            return foodItemList.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return foodItemList.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            View rowView = convertView;
+            ViewHolder viewHolder;
+            if (rowView == null) {
+
+                LayoutInflater inflater = getLayoutInflater();
+                rowView = inflater.inflate(R.layout.image_card_view, parent, false);
+                // configure view holder
+                viewHolder = new ViewHolder();
+                viewHolder.cardImage = (ImageView) rowView.findViewById(R.id.card_image);
+                rowView.setTag(viewHolder);
+
+            } else {
+                viewHolder = (ViewHolder) convertView.getTag();
+            }
+
+            Picasso.with(MainActivity.this).load(foodItemList.get(position).getImageUrl()).into(viewHolder.cardImage);
+
+            return rowView;
+        }
+    }
+
 }
