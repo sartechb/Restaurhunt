@@ -16,6 +16,8 @@ import android.content.Intent;
 import java.io.File;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -30,7 +32,6 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
-
 
 public class MainActivity extends AppCompatActivity{
 
@@ -68,15 +69,18 @@ public class MainActivity extends AppCompatActivity{
         items.add(item2);
         items.add(item3);
 
-        FirebaseStorage storage = FirebaseStorage.getInstance();
-        StorageReference storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
-
         // Upload single picture
         Intent intent = new Intent();
         intent.setType("image/*");
         intent.setAction(Intent.ACTION_GET_CONTENT);
         startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
 
+        final LocalData ld = new LocalData();
+        ld.itemCounter = 0;
+
+        FirebaseStorage storage = FirebaseStorage.getInstance();
+        final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+        final StorageReference storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
 
         storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
             @Override
@@ -129,12 +133,28 @@ public class MainActivity extends AppCompatActivity{
             @Override
             public void onLeftCardExit(Object o) {
                 items.remove(0);
+                ld.itemCounter++;
+
                 myAppAdapter.notifyDataSetChanged();
+
             }
 
             @Override
             public void onRightCardExit(Object o) {
+
+                // save object in history, pass to server to save (get Sarthak to save locally using his Android voodoo)
+
+                // increment number of likes
+                items.get(0).setNumLikes(items.get(0).getNumLikes() + 1);
+
+                // TODO: write back object to server to update # of likes
+                databaseReference.child("card"+Integer.toString(ld.itemCounter)).child("numLikes").setValue(items.get(0).getNumLikes());
+
+                // Handle next feed item, call the function
+
                 items.remove(0);
+                ld.itemCounter++;
+
                 myAppAdapter.notifyDataSetChanged();
 
             }
