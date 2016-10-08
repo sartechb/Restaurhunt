@@ -1,6 +1,9 @@
 package com.sarthakb.restaurhunt;
 
 import android.location.Location;
+import android.net.Uri;
+
+import com.google.firebase.database.DatabaseReference;
 
 import java.util.ArrayList;
 

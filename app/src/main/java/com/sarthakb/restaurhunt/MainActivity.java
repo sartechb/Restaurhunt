@@ -40,22 +40,38 @@ public class MainActivity extends AppCompatActivity{
     ArrayList<FoodItem> items;
     MyAppAdapter myAppAdapter;
     private int PICK_IMAGE_REQUEST = 1;
-    FirebaseStorage storage;
-    StorageReference storageRef;
+    static FirebaseStorage storage;
+    static StorageReference storageRef;
+    static FirebaseDatabase database;
+    static DatabaseReference databaseRef;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         storage = FirebaseStorage.getInstance();
         storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
+        database = FirebaseDatabase.getInstance();
+        databaseRef = database.getReference();
+
+
         Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar_main);
         toolbar.setTitle("Restaurhunt");
         setSupportActionBar(toolbar);
 
         flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
 
+        // Initialize Firebase systems
+        storage = FirebaseStorage.getInstance();
+        databaseRef = FirebaseDatabase.getInstance().getReference();
+        storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
+
+        // Initialize current user
+        final DatabaseReference localUser = databaseRef.child("users").child("user0");
+
+        // Initialize FoodItems
         // Three test items in ArrayList<FoodItem>
         final FoodItem item1 = new FoodItem();
         item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
@@ -64,14 +80,15 @@ public class MainActivity extends AppCompatActivity{
         final FoodItem item3 = new FoodItem();
         item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
 
+        // Initialize card container
         items = new ArrayList<>();
+        // Add cards
 
         items.add(item1);
         items.add(item2);
         items.add(item3);
-
-
-
+        
+        // Initialize itemCounter
         final LocalData ld = new LocalData();
         ld.itemCounter = 0;
 
@@ -143,28 +160,34 @@ public class MainActivity extends AppCompatActivity{
 
             @Override
             public void onLeftCardExit(Object o) {
+
                 items.remove(0);
                 ld.itemCounter++;
 
                 myAppAdapter.notifyDataSetChanged();
-
             }
+
+            // when app opens, contact firebase and get all the pictures
+            // sort those pictures to determine which one to display next
 
             @Override
             public void onRightCardExit(Object o) {
 
+                DatabaseReference currentCard = databaseReference.child("cards").child("card"+Integer.toString(ld.itemCounter));
+
                 // save object in history, pass to server to save (get Sarthak to save locally using his Android voodoo)
+                //localUser.child("history").child("hCard" + Integer.toString(localUser.child("historyCounter").)).setValue(currentCard);
+
 
                 // increment number of likes
                 items.get(0).setNumLikes(items.get(0).getNumLikes() + 1);
 
                 // TODO: write back object to server to update # of likes
-                databaseReference.child("card"+Integer.toString(ld.itemCounter)).child("numLikes").setValue(items.get(0).getNumLikes());
-
-                // Handle next feed item, call the function
+                currentCard.child("numLikes").setValue(items.get(0).getNumLikes());
 
                 items.remove(0);
                 ld.itemCounter++;
+
 
                 myAppAdapter.notifyDataSetChanged();
 
@@ -203,10 +226,12 @@ public class MainActivity extends AppCompatActivity{
                     public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                         // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
                         Uri downloadUrl = taskSnapshot.getDownloadUrl();
-                        FoodItem newItem = new FoodItem();
-                        newItem.setImageUrl(downloadUrl.toString());
-
-
+                        if (downloadUrl != null) {
+                            FoodItem newItem = new FoodItem();
+                            newItem.setImageUrl(downloadUrl.toString());
+                            int last_index = downloadUrl.getPath().split("/").length - 1;
+                            databaseRef.child("cards/" + downloadUrl.getPath().split("/")[last_index]).setValue(newItem);
+                        }
                     }
                 });
             }
