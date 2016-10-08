@@ -6,12 +6,14 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.content.Intent;
+import android.util.*;
 
 import java.io.File;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -38,6 +40,7 @@ public class MainActivity extends AppCompatActivity{
 
     SwipeFlingAdapterView flingContainer;
     ArrayList<FoodItem> items;
+    ArrayList<FoodItem> history; // ADDED THIS
     MyAppAdapter myAppAdapter;
     private int PICK_IMAGE_REQUEST = 1;
     static FirebaseStorage storage;
@@ -83,14 +86,17 @@ public class MainActivity extends AppCompatActivity{
         // Initialize card container
         items = new ArrayList<>();
         // Add cards
-
         items.add(item1);
         items.add(item2);
         items.add(item3);
+
+        // Initialize local history card container
+        history = new ArrayList<>();
         
-        // Initialize itemCounter
+        // Initialize itemCounter and historyCounter
         final LocalData ld = new LocalData();
         ld.itemCounter = 0;
+        ld.historyCounter = 0;
 
         FirebaseStorage storage = FirebaseStorage.getInstance();
         final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
@@ -175,22 +181,25 @@ public class MainActivity extends AppCompatActivity{
 
                 DatabaseReference currentCard = databaseReference.child("cards").child("card"+Integer.toString(ld.itemCounter));
 
-                // save object in history, pass to server to save (get Sarthak to save locally using his Android voodoo)
-                //localUser.child("history").child("hCard" + Integer.toString(localUser.child("historyCounter").)).setValue(currentCard);
-
-
                 // increment number of likes
                 items.get(0).setNumLikes(items.get(0).getNumLikes() + 1);
 
                 // TODO: write back object to server to update # of likes
                 currentCard.child("numLikes").setValue(items.get(0).getNumLikes());
 
+                // add this item to history
+                if (items.get(0).numLikes > 0){
+                    history.add(items.get(0));
+                }
+
+                // test history
+                // System.out.println(history.size());
+
                 items.remove(0);
                 ld.itemCounter++;
-
+                ld.historyCounter++;
 
                 myAppAdapter.notifyDataSetChanged();
-
             }
 
             @Override
