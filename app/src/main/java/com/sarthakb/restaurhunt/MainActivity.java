@@ -11,11 +11,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.content.Intent;
 
+import java.io.File;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 import com.lorentzos.flingswipe.SwipeFlingAdapterView;
 import com.mikepenz.materialdrawer.AccountHeader;
 import com.mikepenz.materialdrawer.AccountHeaderBuilder;
@@ -34,17 +37,24 @@ public class MainActivity extends AppCompatActivity{
     SwipeFlingAdapterView flingContainer;
     ArrayList<FoodItem> items;
     MyAppAdapter myAppAdapter;
+    private int PICK_IMAGE_REQUEST = 1;
+    FirebaseStorage storage;
+    StorageReference storageRef;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        storage = FirebaseStorage.getInstance();
+        storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
         Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar_main);
         toolbar.setTitle("Restaurhunt");
         setSupportActionBar(toolbar);
 
         flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
 
+        // Three test items in ArrayList<FoodItem>
         final FoodItem item1 = new FoodItem();
         item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
         final FoodItem item2 = new FoodItem();
@@ -54,15 +64,20 @@ public class MainActivity extends AppCompatActivity{
 
         items = new ArrayList<>();
 
-
         items.add(item1);
         items.add(item2);
         items.add(item3);
 
-
-
         FirebaseStorage storage = FirebaseStorage.getInstance();
         StorageReference storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
+
+        // Upload single picture
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
+
+
         storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
             @Override
             public void onSuccess(Uri uri) {
@@ -91,7 +106,8 @@ public class MainActivity extends AppCompatActivity{
         PrimaryDrawerItem imagesItem = new PrimaryDrawerItem()
                 .withIdentifier(1).withName("Images");
         PrimaryDrawerItem uploadItem = new PrimaryDrawerItem().withIdentifier(2).withName("Upload");
-        PrimaryDrawerItem myImagesItem = new PrimaryDrawerItem().withIdentifier(2).withName("My Images");
+        PrimaryDrawerItem myImagesItem = new PrimaryDrawerItem().withIdentifier(3).withName("My Images");
+
 
 
         Drawer result = new DrawerBuilder()
@@ -134,6 +150,36 @@ public class MainActivity extends AppCompatActivity{
             }
         });
 
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_IMAGE_REQUEST) {
+            if (resultCode == RESULT_OK) {
+                Uri file = data.getData();
+                StorageReference riversRef = storageRef.child("images/"+file.getLastPathSegment());
+                UploadTask uploadTask = riversRef.putFile(file);
+
+                // Register observers to listen for when the download is done or if it fails
+                uploadTask.addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception exception) {
+                        // Handle unsuccessful uploads
+                    }
+                }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                    @Override
+                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                        // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
+                        Uri downloadUrl = taskSnapshot.getDownloadUrl();
+                        FoodItem newItem = new FoodItem();
+                        newItem.setImageUrl(downloadUrl.toString());
+
+
+                    }
+                });
+            }
+        }
     }
 
     public static class ViewHolder {
