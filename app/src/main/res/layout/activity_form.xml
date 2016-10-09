@@ -14,21 +14,25 @@
     <!--Restaurant Name, Photo, Price, Location-->
 
     <EditText
+        android:id="@+id/etName"
         android:hint="Restaurant Name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
     <EditText
+        android:id="@+id/etPrice"
         android:hint="Price"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
     <EditText
+        android:id="@+id/etLoc"
         android:hint="Location"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
     <Button
+        android:id="@+id/btnUpload"
         android:text="Upload Photo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />

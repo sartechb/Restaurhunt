@@ -48,7 +48,6 @@ public class MainActivity extends AppCompatActivity{
 
     SwipeFlingAdapterView flingContainer;
     MyAppAdapter myAppAdapter;
-    private int PICK_IMAGE_REQUEST = 1;
     private static FirebaseStorage storage;
     private static StorageReference storageRef;
     private static FirebaseDatabase database;
@@ -97,11 +96,7 @@ public class MainActivity extends AppCompatActivity{
                     @Override
                     public boolean onItemClick(View view, int position, IDrawerItem drawerItem) {
                         if(drawerItem.getIdentifier() == 2){
-                            // Upload single picture
-                            Intent intent = new Intent();
-                            intent.setType("image/*");
-                            intent.setAction(Intent.ACTION_GET_CONTENT);
-                            startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
+                            startActivity(new Intent(context, FormActivity.class));
                         }else if(drawerItem.getIdentifier() == 3){
                             Intent intent = new Intent(context, HistoryActivity.class);
                             intent.putExtra("History", history);
@@ -324,52 +319,7 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_IMAGE_REQUEST) {
-            if (resultCode == RESULT_OK) {
-                Uri file = data.getData();
-                Random generator = new Random();
-                int i = generator.nextInt(100000);
-                StorageReference riversRef = storageRef.child("images/"+ Integer.toString(i) + "_" + file.getLastPathSegment());
-                UploadTask uploadTask = riversRef.putFile(file);
 
-                // Register observers to listen for when the download is done or if it fails
-                uploadTask.addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception exception) {
-                        // Handle unsuccessful uploads
-                    }
-                }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
-                        final Uri downloadUrl = taskSnapshot.getDownloadUrl();
-                        if (downloadUrl != null) {
-                            // Get
-                            ValueEventListener getChildrenListener = new ValueEventListener() {
-                                @Override
-                                public void onDataChange(DataSnapshot dataSnapshot) {
-                                    FoodItem newItem = new FoodItem();
-                                    newItem.setImageUrl(downloadUrl.toString());
-                                    long numChildren = dataSnapshot.getChildrenCount();
-                                    newItem.setId((int)numChildren);
-                                    databaseRef.child("cards/card" + Long.toString(numChildren)).setValue(newItem);
-                                }
-
-                                @Override
-                                public void onCancelled(DatabaseError databaseError) {
-
-                                }
-                            };
-                            databaseRef.child("cards").addListenerForSingleValueEvent(getChildrenListener);
-                        }
-                    }
-                });
-            }
-        }
-    }
 
     public static class ViewHolder {
         public ImageView cardImage;
