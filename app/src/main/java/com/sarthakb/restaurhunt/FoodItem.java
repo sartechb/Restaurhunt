@@ -29,10 +29,10 @@ public class FoodItem implements Serializable{
     public FoodItem() {
     }
 
-    public FoodItem(double time, double price) {
-        this.time = time;
-        this.price = price;
-    }
+//    public FoodItem(double time, double price) {
+//        this.time = time;
+//        this.price = price;
+//    }
 
     public static final Comparator<FoodItem> FoodComparator = new Comparator<FoodItem>(){
 
@@ -44,6 +44,12 @@ public class FoodItem implements Serializable{
         // @Override
         public int determineRank(FoodItem item) {
 
+            int rank = 0;
+            // for every like, increase rank by 1
+            rank += item.numLikes;
+
+            return rank;
+            /*
             int min_time = 24;
             int rank = 100;
 
@@ -60,6 +66,7 @@ public class FoodItem implements Serializable{
             } else{
                 return 0;
             }
+            */
 
         }
     };
