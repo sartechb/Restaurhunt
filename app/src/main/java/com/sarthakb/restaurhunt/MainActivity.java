@@ -13,13 +13,18 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.content.Intent;
-import android.util.*;
 
 import java.io.File;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.database.*;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -35,30 +40,37 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity{
 
     SwipeFlingAdapterView flingContainer;
-    ArrayList<FoodItem> items;
     ArrayList<FoodItem> history; // ADDED THIS
     MyAppAdapter myAppAdapter;
     private int PICK_IMAGE_REQUEST = 1;
-    static FirebaseStorage storage;
-    static StorageReference storageRef;
-    static FirebaseDatabase database;
-    static DatabaseReference databaseRef;
-
+    private static FirebaseStorage storage;
+    private static StorageReference storageRef;
+    private static FirebaseDatabase database;
+    private static DatabaseReference databaseRef;
+    static DatabaseReference localUserRef;
+    private ArrayList<FoodItem> items;
+    private ArrayList<ValueEventListener> mLikeListener;
+    private int foodItemStartSize;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        items = new ArrayList<FoodItem>();
+        history = new ArrayList<FoodItem>();
         final Context context = this;
+        
         storage = FirebaseStorage.getInstance();
         storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
         database = FirebaseDatabase.getInstance();
         databaseRef = database.getReference();
-
+        localUserRef = databaseRef.child("user0");
 
         Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar_main);
         toolbar.setTitle("Restaurhunt");
@@ -66,17 +78,53 @@ public class MainActivity extends AppCompatActivity{
 
         flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
 
-        // Initialize Firebase systems
-        storage = FirebaseStorage.getInstance();
-        databaseRef = FirebaseDatabase.getInstance().getReference();
-        storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
-
         // Initialize current user
         final DatabaseReference localUser = databaseRef.child("users").child("user0");
 
+        /*
+        // Read in initial FoodItems
+        ValueEventListener startListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                int i = 0;
+                for (DataSnapshot child : dataSnapshot.getChildren()) {
+                    FoodItem newItem = child.getValue(FoodItem.class);
+                    newItem.id = i;
+                    items.add(newItem);
+                    i++;
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        };
+        databaseRef.child("cards").addListenerForSingleValueEvent(startListener);
+
+//        try {
+//            Thread.sleep(5000);
+//        } catch (InterruptedException ex) {
+//            Thread.currentThread().interrupt();
+//        }
+        */
+
+        Log.d("DEBUG: ", "Items size - " + Integer.toString(items.size()));
         // Initialize FoodItems
         //Grab them from Firebase (snapshot?)
         // Three test items in ArrayList<FoodItem>
+        //final FoodItem item1 = new FoodItem();
+        //item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
+        //item1.id = 0;
+        //final FoodItem item2 = new FoodItem();
+        //item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
+        //item2.id = 1;
+        //final FoodItem item3 = new FoodItem();
+        //item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
+        //item3.id = 2;
+
+        // Initialize card container
+        items = new ArrayList<>();
         final FoodItem item1 = new FoodItem();
         item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
         final FoodItem item2 = new FoodItem();
@@ -84,24 +132,22 @@ public class MainActivity extends AppCompatActivity{
         final FoodItem item3 = new FoodItem();
         item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
 
-        // Initialize card container
-        items = new ArrayList<>();
         // Add cards
         items.add(item1);
         items.add(item2);
         items.add(item3);
 
+        foodItemStartSize = items.size();
+
+        // Initialize itemCounter
         // Initialize local history card container
         history = new ArrayList<>();
-        
+
         // Initialize itemCounter and historyCounter
+
         final LocalData ld = new LocalData();
         ld.itemCounter = 0;
         ld.historyCounter = 0;
-
-        FirebaseStorage storage = FirebaseStorage.getInstance();
-        final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
-        final StorageReference storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
 
         storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
             @Override
@@ -116,9 +162,44 @@ public class MainActivity extends AppCompatActivity{
             }
         });
 
+
 //        https://github.com/kikoso/Swipeable-Cards
 //        https://github.com/mikepenz/MaterialDrawer
 
+        mLikeListener = new ArrayList<ValueEventListener>();
+
+        Log.d("DEBUG: ", Integer.toString(items.size()));
+        for (ld.listenerCount = 0; ld.listenerCount < foodItemStartSize; ld.listenerCount++) {
+            DatabaseReference cardRef = databaseRef.child("cards").child("card" + Integer.toString(ld.listenerCount));
+            // Add value event listener to the post
+            // [START post_value_event_listener]
+            ValueEventListener likeListener = new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    // Get Post object and use the values to update the UI
+                    FoodItem fi = dataSnapshot.getValue(FoodItem.class);
+                    Log.d("DEBUG: ", Integer.toString(fi.id) + "WAHOO THE DATA CHANGED!");
+                    Log.d("DEBUG: ", "WAHOO THE DATA CHANGED!" + Integer.toString(items.size()));
+                    //if (items.size() == foodItemStartSize)
+                    if (fi.id - (foodItemStartSize - items.size()) >= 0)
+                   // if (fi.id + items.size() >= foodItemStartSize)
+                        items.get(fi.id - (foodItemStartSize - items.size())).setNumLikes(fi.getNumLikes());
+                }
+
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    // Getting Post failed, log a message
+                    Log.d("Like Listener: ", "Snapshot cancelled!");
+                }
+            };
+            cardRef.addValueEventListener(likeListener);
+            // [END post_value_event_listener]
+
+            // Keep copy of post listener so we can remove it when app stops
+            mLikeListener.add(likeListener);
+        }
+        ld.listenerCount = items.size() - 1;
 
         AccountHeader profileHeader = new AccountHeaderBuilder()
                 .withActivity(this)
@@ -172,7 +253,10 @@ public class MainActivity extends AppCompatActivity{
             @Override
             public void onLeftCardExit(Object o) {
 
+                if (mLikeListener.get(ld.itemCounter) != null)
+                    databaseRef.child("cards").child("card" + Integer.toString(ld.itemCounter)).removeEventListener(mLikeListener.get(ld.itemCounter));
                 items.remove(0);
+
                 ld.itemCounter++;
 
                 myAppAdapter.notifyDataSetChanged();
@@ -184,13 +268,19 @@ public class MainActivity extends AppCompatActivity{
             @Override
             public void onRightCardExit(Object o) {
 
-                DatabaseReference currentCard = databaseReference.child("cards").child("card"+Integer.toString(ld.itemCounter));
+                DatabaseReference currentCard = databaseRef.child("cards").child("card"+Integer.toString(ld.itemCounter));
 
                 // increment number of likes
+                Log.d("DEBUG: ", Integer.toString(items.get(0).getNumLikes()));
                 items.get(0).setNumLikes(items.get(0).getNumLikes() + 1);
+                Log.d("DEBUG: ", Integer.toString(items.get(0).getNumLikes()));
 
                 // TODO: write back object to server to update # of likes
-                currentCard.child("numLikes").setValue(items.get(0).getNumLikes());
+                currentCard.setValue(items.get(0));
+
+                if (mLikeListener.get(ld.itemCounter) != null)
+                    databaseRef.child("cards").child("card" + Integer.toString(ld.itemCounter)).removeEventListener(mLikeListener.get(ld.itemCounter));
+                Log.d("DEBUG", "Listener removed");
 
                 // add this item to history
                 if (items.get(0).numLikes > 0){
@@ -201,6 +291,7 @@ public class MainActivity extends AppCompatActivity{
                 // System.out.println(history.size());
 
                 items.remove(0);
+
                 ld.itemCounter++;
                 ld.historyCounter++;
 
@@ -221,12 +312,27 @@ public class MainActivity extends AppCompatActivity{
     }
 
     @Override
+    public void onStop() {
+        super.onStop();
+
+        // Remove post value event listener
+
+        int i = 0;
+        while (i < mLikeListener.size() && mLikeListener.get(i) != null) {
+            databaseRef.child("cards").child("card" + Integer.toString(i)).removeEventListener(mLikeListener.get(i));
+            i++;
+        }
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_IMAGE_REQUEST) {
             if (resultCode == RESULT_OK) {
                 Uri file = data.getData();
-                StorageReference riversRef = storageRef.child("images/"+file.getLastPathSegment());
+                Random generator = new Random();
+                int i = generator.nextInt(100000);
+                StorageReference riversRef = storageRef.child("images/"+ Integer.toString(i) + "_" + file.getLastPathSegment());
                 UploadTask uploadTask = riversRef.putFile(file);
 
                 // Register observers to listen for when the download is done or if it fails
@@ -239,12 +345,25 @@ public class MainActivity extends AppCompatActivity{
                     @Override
                     public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                         // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
-                        Uri downloadUrl = taskSnapshot.getDownloadUrl();
+                        final Uri downloadUrl = taskSnapshot.getDownloadUrl();
                         if (downloadUrl != null) {
-                            FoodItem newItem = new FoodItem();
-                            newItem.setImageUrl(downloadUrl.toString());
-                            int last_index = downloadUrl.getPath().split("/").length - 1;
-                            databaseRef.child("cards/" + downloadUrl.getPath().split("/")[last_index]).setValue(newItem);
+                            // Get
+                            ValueEventListener getChildrenListener = new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                    FoodItem newItem = new FoodItem();
+                                    newItem.setImageUrl(downloadUrl.toString());
+                                    long numChildren = dataSnapshot.getChildrenCount();
+                                    newItem.setId((int)numChildren);
+                                    databaseRef.child("cards/card" + Long.toString(numChildren)).setValue(newItem);
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
+
+                                }
+                            };
+                            databaseRef.child("cards").addListenerForSingleValueEvent(getChildrenListener);
                         }
                     }
                 });
