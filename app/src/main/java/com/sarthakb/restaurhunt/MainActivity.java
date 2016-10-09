@@ -14,6 +14,7 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.content.Intent;
 import android.widget.TextView;
+import java.util.Collections;
 
 import java.io.File;
 import com.google.gson.Gson;
@@ -138,6 +139,7 @@ public class MainActivity extends AppCompatActivity{
                 foodItemStartSize = items.size();
 
                 // sort pictures to determine order to display to user
+                Collections.sort(items, FoodItem.FoodComparator);
 
                 storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
                     @Override
