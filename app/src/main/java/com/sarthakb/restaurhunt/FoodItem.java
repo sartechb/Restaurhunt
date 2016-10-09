@@ -64,6 +64,14 @@ public class FoodItem implements Serializable{
         }
     };
 
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
     public String getUserLocation() {
         return userLocation;
     }
@@ -135,4 +143,6 @@ public class FoodItem implements Serializable{
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
     }
+
+
 }

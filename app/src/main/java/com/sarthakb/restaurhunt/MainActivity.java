@@ -15,9 +15,16 @@ import android.widget.ImageView;
 import android.content.Intent;
 
 import java.io.File;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.*;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -33,6 +40,7 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity{
 
@@ -44,21 +52,25 @@ public class MainActivity extends AppCompatActivity{
     private static StorageReference storageRef;
     private static FirebaseDatabase database;
     private static DatabaseReference databaseRef;
+    static DatabaseReference localUserRef;
     private ArrayList<FoodItem> items;
     private ArrayList<ValueEventListener> mLikeListener;
     private int foodItemStartSize;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        items = new ArrayList<FoodItem>();
+        history = new ArrayList<FoodItem>();
         final Context context = this;
+        
         storage = FirebaseStorage.getInstance();
         storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
         database = FirebaseDatabase.getInstance();
         databaseRef = database.getReference();
-
+        localUserRef = databaseRef.child("user0");
 
         Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar_main);
         toolbar.setTitle("Restaurhunt");
@@ -69,21 +81,57 @@ public class MainActivity extends AppCompatActivity{
         // Initialize current user
         final DatabaseReference localUser = databaseRef.child("users").child("user0");
 
+        /*
+        // Read in initial FoodItems
+        ValueEventListener startListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                int i = 0;
+                for (DataSnapshot child : dataSnapshot.getChildren()) {
+                    FoodItem newItem = child.getValue(FoodItem.class);
+                    newItem.id = i;
+                    items.add(newItem);
+                    i++;
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        };
+        databaseRef.child("cards").addListenerForSingleValueEvent(startListener);
+
+//        try {
+//            Thread.sleep(5000);
+//        } catch (InterruptedException ex) {
+//            Thread.currentThread().interrupt();
+//        }
+        */
+
+        Log.d("DEBUG: ", "Items size - " + Integer.toString(items.size()));
         // Initialize FoodItems
         //Grab them from Firebase (snapshot?)
         // Three test items in ArrayList<FoodItem>
-        final FoodItem item1 = new FoodItem();
-        item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
-        item1.id = 0;
-        final FoodItem item2 = new FoodItem();
-        item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
-        item2.id = 1;
-        final FoodItem item3 = new FoodItem();
-        item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
-        item3.id = 2;
+        //final FoodItem item1 = new FoodItem();
+        //item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
+        //item1.id = 0;
+        //final FoodItem item2 = new FoodItem();
+        //item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
+        //item2.id = 1;
+        //final FoodItem item3 = new FoodItem();
+        //item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
+        //item3.id = 2;
 
         // Initialize card container
         items = new ArrayList<>();
+        final FoodItem item1 = new FoodItem();
+        item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
+        final FoodItem item2 = new FoodItem();
+        item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
+        final FoodItem item3 = new FoodItem();
+        item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
+
         // Add cards
         items.add(item1);
         items.add(item2);
@@ -94,7 +142,7 @@ public class MainActivity extends AppCompatActivity{
         // Initialize itemCounter
         // Initialize local history card container
         history = new ArrayList<>();
-        
+
         // Initialize itemCounter and historyCounter
 
         final LocalData ld = new LocalData();
@@ -113,6 +161,7 @@ public class MainActivity extends AppCompatActivity{
                 // Handle any errors
             }
         });
+
 
 //        https://github.com/kikoso/Swipeable-Cards
 //        https://github.com/mikepenz/MaterialDrawer
@@ -281,7 +330,9 @@ public class MainActivity extends AppCompatActivity{
         if (requestCode == PICK_IMAGE_REQUEST) {
             if (resultCode == RESULT_OK) {
                 Uri file = data.getData();
-                StorageReference riversRef = storageRef.child("images/"+file.getLastPathSegment());
+                Random generator = new Random();
+                int i = generator.nextInt(100000);
+                StorageReference riversRef = storageRef.child("images/"+ Integer.toString(i) + "_" + file.getLastPathSegment());
                 UploadTask uploadTask = riversRef.putFile(file);
 
                 // Register observers to listen for when the download is done or if it fails
@@ -294,12 +345,25 @@ public class MainActivity extends AppCompatActivity{
                     @Override
                     public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                         // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
-                        Uri downloadUrl = taskSnapshot.getDownloadUrl();
+                        final Uri downloadUrl = taskSnapshot.getDownloadUrl();
                         if (downloadUrl != null) {
-                            FoodItem newItem = new FoodItem();
-                            newItem.setImageUrl(downloadUrl.toString());
-                            int last_index = downloadUrl.getPath().split("/").length - 1;
-                            databaseRef.child("cards/" + downloadUrl.getPath().split("/")[last_index]).setValue(newItem);
+                            // Get
+                            ValueEventListener getChildrenListener = new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                    FoodItem newItem = new FoodItem();
+                                    newItem.setImageUrl(downloadUrl.toString());
+                                    long numChildren = dataSnapshot.getChildrenCount();
+                                    newItem.setId((int)numChildren);
+                                    databaseRef.child("cards/card" + Long.toString(numChildren)).setValue(newItem);
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
+
+                                }
+                            };
+                            databaseRef.child("cards").addListenerForSingleValueEvent(getChildrenListener);
                         }
                     }
                 });
