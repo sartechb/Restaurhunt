@@ -3,6 +3,7 @@ package com.sarthakb.restaurhunt;
 import android.content.Context;
 import android.net.Uri;
 import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -14,6 +15,7 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.content.Intent;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
 import com.google.gson.Gson;
@@ -265,6 +267,14 @@ public class MainActivity extends AppCompatActivity{
                     @Override
                     public void onScroll(float v) {
 
+                    }
+                });
+
+                flingContainer.setOnItemClickListener(new SwipeFlingAdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClicked(int i, Object o) {
+                        FoodItem clickedItem = items.get(i);
+                        Toast.makeText(context, "Number of likes: " + String.valueOf(clickedItem.getNumLikes()), Toast.LENGTH_SHORT).show();
                     }
                 });
             }
