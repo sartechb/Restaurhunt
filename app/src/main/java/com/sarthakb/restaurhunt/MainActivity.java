@@ -12,12 +12,12 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.content.Intent;
+import android.util.Log;
 
 import java.io.File;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.*;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -37,13 +37,15 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity{
 
     SwipeFlingAdapterView flingContainer;
-    ArrayList<FoodItem> items;
     MyAppAdapter myAppAdapter;
     private int PICK_IMAGE_REQUEST = 1;
-    static FirebaseStorage storage;
-    static StorageReference storageRef;
-    static FirebaseDatabase database;
-    static DatabaseReference databaseRef;
+    private static FirebaseStorage storage;
+    private static StorageReference storageRef;
+    private static FirebaseDatabase database;
+    private static DatabaseReference databaseRef;
+    private ArrayList<FoodItem> items;
+    private ArrayList<ValueEventListener> mLikeListener;
+    private int foodItemStartSize;
 
 
     @Override
@@ -63,11 +65,6 @@ public class MainActivity extends AppCompatActivity{
 
         flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
 
-        // Initialize Firebase systems
-        storage = FirebaseStorage.getInstance();
-        databaseRef = FirebaseDatabase.getInstance().getReference();
-        storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
-
         // Initialize current user
         final DatabaseReference localUser = databaseRef.child("users").child("user0");
 
@@ -75,10 +72,13 @@ public class MainActivity extends AppCompatActivity{
         // Three test items in ArrayList<FoodItem>
         final FoodItem item1 = new FoodItem();
         item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
+        item1.id = 0;
         final FoodItem item2 = new FoodItem();
         item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
+        item2.id = 1;
         final FoodItem item3 = new FoodItem();
         item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
+        item3.id = 2;
 
         // Initialize card container
         items = new ArrayList<>();
@@ -87,14 +87,12 @@ public class MainActivity extends AppCompatActivity{
         items.add(item1);
         items.add(item2);
         items.add(item3);
-        
+
+        foodItemStartSize = items.size();
+
         // Initialize itemCounter
         final LocalData ld = new LocalData();
         ld.itemCounter = 0;
-
-        FirebaseStorage storage = FirebaseStorage.getInstance();
-        final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
-        final StorageReference storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
 
         storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
             @Override
@@ -112,6 +110,40 @@ public class MainActivity extends AppCompatActivity{
 //        https://github.com/kikoso/Swipeable-Cards
 //        https://github.com/mikepenz/MaterialDrawer
 
+        mLikeListener = new ArrayList<ValueEventListener>();
+
+        Log.d("DEBUG: ", Integer.toString(items.size()));
+        for (ld.listenerCount = 0; ld.listenerCount < foodItemStartSize; ld.listenerCount++) {
+            DatabaseReference cardRef = databaseRef.child("cards").child("card" + Integer.toString(ld.listenerCount));
+            // Add value event listener to the post
+            // [START post_value_event_listener]
+            ValueEventListener likeListener = new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    // Get Post object and use the values to update the UI
+                    FoodItem fi = dataSnapshot.getValue(FoodItem.class);
+                    Log.d("DEBUG: ", Integer.toString(fi.id) + "WAHOO THE DATA CHANGED!");
+                    Log.d("DEBUG: ", "WAHOO THE DATA CHANGED!" + Integer.toString(items.size()));
+                    //if (items.size() == foodItemStartSize)
+                    if (fi.id - (foodItemStartSize - items.size()) >= 0)
+                   // if (fi.id + items.size() >= foodItemStartSize)
+                        items.get(fi.id - (foodItemStartSize - items.size())).setNumLikes(fi.getNumLikes());
+                }
+
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    // Getting Post failed, log a message
+                    Log.d("Like Listener: ", "Snapshot cancelled!");
+                }
+            };
+            cardRef.addValueEventListener(likeListener);
+            // [END post_value_event_listener]
+
+            // Keep copy of post listener so we can remove it when app stops
+            mLikeListener.add(likeListener);
+        }
+        ld.listenerCount = items.size() - 1;
 
         AccountHeader profileHeader = new AccountHeaderBuilder()
                 .withActivity(this)
@@ -161,7 +193,10 @@ public class MainActivity extends AppCompatActivity{
             @Override
             public void onLeftCardExit(Object o) {
 
+                if (mLikeListener.get(ld.itemCounter) != null)
+                    databaseRef.child("cards").child("card" + Integer.toString(ld.itemCounter)).removeEventListener(mLikeListener.get(ld.itemCounter));
                 items.remove(0);
+
                 ld.itemCounter++;
 
                 myAppAdapter.notifyDataSetChanged();
@@ -173,19 +208,26 @@ public class MainActivity extends AppCompatActivity{
             @Override
             public void onRightCardExit(Object o) {
 
-                DatabaseReference currentCard = databaseReference.child("cards").child("card"+Integer.toString(ld.itemCounter));
+                DatabaseReference currentCard = databaseRef.child("cards").child("card"+Integer.toString(ld.itemCounter));
 
                 // save object in history, pass to server to save (get Sarthak to save locally using his Android voodoo)
                 //localUser.child("history").child("hCard" + Integer.toString(localUser.child("historyCounter").)).setValue(currentCard);
 
 
                 // increment number of likes
+                Log.d("DEBUG: ", Integer.toString(items.get(0).getNumLikes()));
                 items.get(0).setNumLikes(items.get(0).getNumLikes() + 1);
+                Log.d("DEBUG: ", Integer.toString(items.get(0).getNumLikes()));
 
                 // TODO: write back object to server to update # of likes
-                currentCard.child("numLikes").setValue(items.get(0).getNumLikes());
+                currentCard.setValue(items.get(0));
+
+                if (mLikeListener.get(ld.itemCounter) != null)
+                    databaseRef.child("cards").child("card" + Integer.toString(ld.itemCounter)).removeEventListener(mLikeListener.get(ld.itemCounter));
+                Log.d("DEBUG", "Listener removed");
 
                 items.remove(0);
+
                 ld.itemCounter++;
 
 
@@ -204,6 +246,19 @@ public class MainActivity extends AppCompatActivity{
             }
         });
 
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // Remove post value event listener
+
+        int i = 0;
+        while (mLikeListener.get(i) != null) {
+            databaseRef.child("cards").child("card" + Integer.toString(i)).removeEventListener(mLikeListener.get(i));
+            i++;
+        }
     }
 
     @Override

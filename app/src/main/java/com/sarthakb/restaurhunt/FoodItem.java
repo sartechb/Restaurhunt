@@ -12,6 +12,7 @@ import java.util.ArrayList;
  */
 
 public class FoodItem {
+    int id;
     String userLocation;
     String time;
     double price;
