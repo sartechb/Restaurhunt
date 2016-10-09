@@ -6,13 +6,13 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.content.Intent;
-import android.util.Log;
 
 import java.io.File;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -37,6 +37,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity{
 
     SwipeFlingAdapterView flingContainer;
+    ArrayList<FoodItem> history; // ADDED THIS
     MyAppAdapter myAppAdapter;
     private int PICK_IMAGE_REQUEST = 1;
     private static FirebaseStorage storage;
@@ -52,7 +53,7 @@ public class MainActivity extends AppCompatActivity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        final Context context = this;
         storage = FirebaseStorage.getInstance();
         storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
         database = FirebaseDatabase.getInstance();
@@ -69,6 +70,7 @@ public class MainActivity extends AppCompatActivity{
         final DatabaseReference localUser = databaseRef.child("users").child("user0");
 
         // Initialize FoodItems
+        //Grab them from Firebase (snapshot?)
         // Three test items in ArrayList<FoodItem>
         final FoodItem item1 = new FoodItem();
         item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
@@ -83,7 +85,6 @@ public class MainActivity extends AppCompatActivity{
         // Initialize card container
         items = new ArrayList<>();
         // Add cards
-
         items.add(item1);
         items.add(item2);
         items.add(item3);
@@ -91,8 +92,14 @@ public class MainActivity extends AppCompatActivity{
         foodItemStartSize = items.size();
 
         // Initialize itemCounter
+        // Initialize local history card container
+        history = new ArrayList<>();
+        
+        // Initialize itemCounter and historyCounter
+
         final LocalData ld = new LocalData();
         ld.itemCounter = 0;
+        ld.historyCounter = 0;
 
         storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
             @Override
@@ -176,6 +183,10 @@ public class MainActivity extends AppCompatActivity{
                             intent.setType("image/*");
                             intent.setAction(Intent.ACTION_GET_CONTENT);
                             startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
+                        }else if(drawerItem.getIdentifier() == 3){
+                            Intent intent = new Intent(context, HistoryActivity.class);
+                            intent.putExtra("History", history);
+                            startActivity(intent);
                         }
                         return false;
                     }
@@ -210,10 +221,6 @@ public class MainActivity extends AppCompatActivity{
 
                 DatabaseReference currentCard = databaseRef.child("cards").child("card"+Integer.toString(ld.itemCounter));
 
-                // save object in history, pass to server to save (get Sarthak to save locally using his Android voodoo)
-                //localUser.child("history").child("hCard" + Integer.toString(localUser.child("historyCounter").)).setValue(currentCard);
-
-
                 // increment number of likes
                 Log.d("DEBUG: ", Integer.toString(items.get(0).getNumLikes()));
                 items.get(0).setNumLikes(items.get(0).getNumLikes() + 1);
@@ -226,13 +233,20 @@ public class MainActivity extends AppCompatActivity{
                     databaseRef.child("cards").child("card" + Integer.toString(ld.itemCounter)).removeEventListener(mLikeListener.get(ld.itemCounter));
                 Log.d("DEBUG", "Listener removed");
 
+                // add this item to history
+                if (items.get(0).numLikes > 0){
+                    history.add(items.get(0));
+                }
+
+                // test history
+                // System.out.println(history.size());
+
                 items.remove(0);
 
                 ld.itemCounter++;
-
+                ld.historyCounter++;
 
                 myAppAdapter.notifyDataSetChanged();
-
             }
 
             @Override
@@ -255,7 +269,7 @@ public class MainActivity extends AppCompatActivity{
         // Remove post value event listener
 
         int i = 0;
-        while (mLikeListener.get(i) != null) {
+        while (i < mLikeListener.size() && mLikeListener.get(i) != null) {
             databaseRef.child("cards").child("card" + Integer.toString(i)).removeEventListener(mLikeListener.get(i));
             i++;
         }

@@ -7,5 +7,7 @@ package com.sarthakb.restaurhunt;
 public class LocalData {
 
     int itemCounter;
+
     int listenerCount;
+    int historyCounter;
 }

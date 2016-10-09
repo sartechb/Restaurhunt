@@ -1,20 +1,23 @@
 package com.sarthakb.restaurhunt;
 
 import android.location.Location;
+import java.util.Comparator;
 import android.net.Uri;
 
 import com.google.firebase.database.DatabaseReference;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  * Created by Sarthak on 10/8/16.
  */
 
-public class FoodItem {
+public class FoodItem implements Serializable{
+
     int id;
     String userLocation;
-    String time;
+    double time;
     double price;
     Location gpsLocation;
     ArrayList<String> tags;
@@ -26,6 +29,41 @@ public class FoodItem {
     public FoodItem() {
     }
 
+    public FoodItem(double time, double price) {
+        this.time = time;
+        this.price = price;
+    }
+
+    public static final Comparator<FoodItem> FoodComparator = new Comparator<FoodItem>(){
+
+        //@Override
+        public int compare(FoodItem one, FoodItem two) {
+            return determineRank(one) - determineRank(two);  // This will work because rank is positive integer
+        }
+
+        // @Override
+        public int determineRank(FoodItem item) {
+
+            int min_time = 24;
+            int rank = 100;
+
+            // for every like, increase rank by 1
+            rank += item.numLikes;
+
+            // for every hour above up time, decrease rank by (up_time - min_time)2
+            if (item.time > min_time){
+                rank -= Math.pow((item.time - min_time),2);
+            }
+
+            if (rank > 0){
+                return rank;
+            } else{
+                return 0;
+            }
+
+        }
+    };
+
     public String getUserLocation() {
         return userLocation;
     }
@@ -34,11 +72,11 @@ public class FoodItem {
         this.userLocation = userLocation;
     }
 
-    public String getTime() {
+    public double getTime() {
         return time;
     }
 
-    public void setTime(String time) {
+    public void setTime(double time) {
         this.time = time;
     }
 
