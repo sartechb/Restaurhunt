@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.content.Intent;
+import android.widget.TextView;
 
 import java.io.File;
 import com.google.gson.Gson;
@@ -58,13 +59,14 @@ public class MainActivity extends AppCompatActivity{
     private ArrayList<ValueEventListener> mLikeListener;
     private int foodItemStartSize;
     private LocalData ld;
+    TextView emtText;
     //private Semaphore sem = new Semaphore(0);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        emtText = (TextView) findViewById(R.id.emtText);
         AccountHeader profileHeader = new AccountHeaderBuilder()
                 .withActivity(this)
                 .withHeaderBackground(R.drawable.otriangles)
@@ -193,6 +195,8 @@ public class MainActivity extends AppCompatActivity{
                 flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
                 myAppAdapter = new MyAppAdapter(items, MainActivity.this);
                 flingContainer.setAdapter(myAppAdapter);
+
+
                 flingContainer.setFlingListener(new SwipeFlingAdapterView.onFlingListener() {
                     @Override
                     public void removeFirstObjectInAdapter() {
@@ -209,6 +213,13 @@ public class MainActivity extends AppCompatActivity{
                         ld.itemCounter++;
 
                         myAppAdapter.notifyDataSetChanged();
+                        if(items.isEmpty()){
+                            flingContainer.setVisibility(View.GONE);
+                            emtText.setVisibility(View.VISIBLE);
+                        }else{
+                            flingContainer.setVisibility(View.VISIBLE);
+                            emtText.setVisibility(View.GONE);
+                        }
                     }
 
                     @Override
@@ -242,6 +253,13 @@ public class MainActivity extends AppCompatActivity{
                         ld.historyCounter++;
 
                         myAppAdapter.notifyDataSetChanged();
+                        if(items.isEmpty()){
+                            flingContainer.setVisibility(View.GONE);
+                            emtText.setVisibility(View.VISIBLE);
+                        }else{
+                            flingContainer.setVisibility(View.VISIBLE);
+                            emtText.setVisibility(View.GONE);
+                        }
                     }
 
                     @Override
