@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        final Context context = this;
         storage = FirebaseStorage.getInstance();
         storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
         database = FirebaseDatabase.getInstance();
@@ -75,6 +75,7 @@ public class MainActivity extends AppCompatActivity{
         final DatabaseReference localUser = databaseRef.child("users").child("user0");
 
         // Initialize FoodItems
+        //Grab them from Firebase (snapshot?)
         // Three test items in ArrayList<FoodItem>
         final FoodItem item1 = new FoodItem();
         item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
@@ -150,6 +151,10 @@ public class MainActivity extends AppCompatActivity{
                             intent.setType("image/*");
                             intent.setAction(Intent.ACTION_GET_CONTENT);
                             startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
+                        }else if(drawerItem.getIdentifier() == 3){
+                            Intent intent = new Intent(context, HistoryActivity.class);
+                            intent.putExtra("History", history);
+                            startActivity(intent);
                         }
                         return false;
                     }
