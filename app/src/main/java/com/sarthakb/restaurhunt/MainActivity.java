@@ -41,11 +41,11 @@ import com.squareup.picasso.Picasso;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Semaphore;
 
 public class MainActivity extends AppCompatActivity{
 
     SwipeFlingAdapterView flingContainer;
-    ArrayList<FoodItem> history; // ADDED THIS
     MyAppAdapter myAppAdapter;
     private int PICK_IMAGE_REQUEST = 1;
     private static FirebaseStorage storage;
@@ -54,168 +54,36 @@ public class MainActivity extends AppCompatActivity{
     private static DatabaseReference databaseRef;
     static DatabaseReference localUserRef;
     private ArrayList<FoodItem> items;
+    private ArrayList<FoodItem> history;
     private ArrayList<ValueEventListener> mLikeListener;
     private int foodItemStartSize;
+    private LocalData ld;
+    //private Semaphore sem = new Semaphore(0);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        items = new ArrayList<FoodItem>();
-        history = new ArrayList<FoodItem>();
-        final Context context = this;
-        
-        storage = FirebaseStorage.getInstance();
-        storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
-        database = FirebaseDatabase.getInstance();
-        databaseRef = database.getReference();
-        localUserRef = databaseRef.child("user0");
-
-        Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar_main);
-        toolbar.setTitle("Restaurhunt");
-        setSupportActionBar(toolbar);
-
-        flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
-
-        // Initialize current user
-        final DatabaseReference localUser = databaseRef.child("users").child("user0");
-
-        /*
-        // Read in initial FoodItems
-        ValueEventListener startListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                int i = 0;
-                for (DataSnapshot child : dataSnapshot.getChildren()) {
-                    FoodItem newItem = child.getValue(FoodItem.class);
-                    newItem.id = i;
-                    items.add(newItem);
-                    i++;
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        };
-        databaseRef.child("cards").addListenerForSingleValueEvent(startListener);
-
-//        try {
-//            Thread.sleep(5000);
-//        } catch (InterruptedException ex) {
-//            Thread.currentThread().interrupt();
-//        }
-        */
-
-        Log.d("DEBUG: ", "Items size - " + Integer.toString(items.size()));
-        // Initialize FoodItems
-        //Grab them from Firebase (snapshot?)
-        // Three test items in ArrayList<FoodItem>
-        //final FoodItem item1 = new FoodItem();
-        //item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
-        //item1.id = 0;
-        //final FoodItem item2 = new FoodItem();
-        //item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
-        //item2.id = 1;
-        //final FoodItem item3 = new FoodItem();
-        //item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
-        //item3.id = 2;
-
-        // Initialize card container
-        items = new ArrayList<>();
-        final FoodItem item1 = new FoodItem();
-        item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
-        final FoodItem item2 = new FoodItem();
-        item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
-        final FoodItem item3 = new FoodItem();
-        item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
-
-        // Add cards
-        items.add(item1);
-        items.add(item2);
-        items.add(item3);
-
-        foodItemStartSize = items.size();
-
-        // Initialize itemCounter
-        // Initialize local history card container
-        history = new ArrayList<>();
-
-        // Initialize itemCounter and historyCounter
-
-        final LocalData ld = new LocalData();
-        ld.itemCounter = 0;
-        ld.historyCounter = 0;
-
-        storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-            @Override
-            public void onSuccess(Uri uri) {
-                // Got the download URL for 'users/me/profile.png'
-//                item2.setImageUrl(uri.toString());
-            }
-        }).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception exception) {
-                // Handle any errors
-            }
-        });
-
-
-//        https://github.com/kikoso/Swipeable-Cards
-//        https://github.com/mikepenz/MaterialDrawer
-
-        mLikeListener = new ArrayList<ValueEventListener>();
-
-        Log.d("DEBUG: ", Integer.toString(items.size()));
-        for (ld.listenerCount = 0; ld.listenerCount < foodItemStartSize; ld.listenerCount++) {
-            DatabaseReference cardRef = databaseRef.child("cards").child("card" + Integer.toString(ld.listenerCount));
-            // Add value event listener to the post
-            // [START post_value_event_listener]
-            ValueEventListener likeListener = new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    // Get Post object and use the values to update the UI
-                    FoodItem fi = dataSnapshot.getValue(FoodItem.class);
-                    Log.d("DEBUG: ", Integer.toString(fi.id) + "WAHOO THE DATA CHANGED!");
-                    Log.d("DEBUG: ", "WAHOO THE DATA CHANGED!" + Integer.toString(items.size()));
-                    //if (items.size() == foodItemStartSize)
-                    if (fi.id - (foodItemStartSize - items.size()) >= 0)
-                   // if (fi.id + items.size() >= foodItemStartSize)
-                        items.get(fi.id - (foodItemStartSize - items.size())).setNumLikes(fi.getNumLikes());
-                }
-
-
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-                    // Getting Post failed, log a message
-                    Log.d("Like Listener: ", "Snapshot cancelled!");
-                }
-            };
-            cardRef.addValueEventListener(likeListener);
-            // [END post_value_event_listener]
-
-            // Keep copy of post listener so we can remove it when app stops
-            mLikeListener.add(likeListener);
-        }
-        ld.listenerCount = items.size() - 1;
-
         AccountHeader profileHeader = new AccountHeaderBuilder()
                 .withActivity(this)
                 .withHeaderBackground(R.drawable.otriangles)
                 .addProfiles(
                         new ProfileDrawerItem()
-                        .withName("Test McTestFace")
-                        .withEmail("hello@sarthakb.com")
+                                .withName("Test McTestFace")
+                                .withEmail("hello@sarthakb.com")
                 ).build();
 
         PrimaryDrawerItem imagesItem = new PrimaryDrawerItem()
                 .withIdentifier(1).withName("Images");
         PrimaryDrawerItem uploadItem = new PrimaryDrawerItem().withIdentifier(2).withName("Upload");
-        PrimaryDrawerItem myImagesItem = new PrimaryDrawerItem().withIdentifier(3).withName("My Images");
+        PrimaryDrawerItem myImagesItem = new PrimaryDrawerItem().withIdentifier(3).withName("History");
 
+        final Context context = this;
 
+        Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar_main);
+        toolbar.setTitle("Restaurhunt");
+        setSupportActionBar(toolbar);
 
         Drawer result = new DrawerBuilder()
                 .withActivity(this)
@@ -242,73 +110,187 @@ public class MainActivity extends AppCompatActivity{
                 })
                 .build();
 
-        myAppAdapter = new MyAppAdapter(items, MainActivity.this);
-        flingContainer.setAdapter(myAppAdapter);
-        flingContainer.setFlingListener(new SwipeFlingAdapterView.onFlingListener() {
+        storage = FirebaseStorage.getInstance();
+        storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
+        database = FirebaseDatabase.getInstance();
+        databaseRef = database.getReference();
+        localUserRef = databaseRef.child("user0");
+
+        items = new ArrayList<>();
+        history = new ArrayList<>();
+
+        // Initialize itemCounter and historyCounter
+        ld = new LocalData();
+        ld.itemCounter = 0;
+        ld.historyCounter = 0;
+
+        // when app opens, contact firebase and get all the db items
+        databaseRef.child("cards").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void removeFirstObjectInAdapter() {
-
-            }
-
-            @Override
-            public void onLeftCardExit(Object o) {
-
-                if (mLikeListener.get(ld.itemCounter) != null)
-                    databaseRef.child("cards").child("card" + Integer.toString(ld.itemCounter)).removeEventListener(mLikeListener.get(ld.itemCounter));
-                items.remove(0);
-
-                ld.itemCounter++;
-
-                myAppAdapter.notifyDataSetChanged();
-            }
-
-            // when app opens, contact firebase and get all the pictures
-            // sort those pictures to determine which one to display next
-
-            @Override
-            public void onRightCardExit(Object o) {
-
-                DatabaseReference currentCard = databaseRef.child("cards").child("card"+Integer.toString(ld.itemCounter));
-
-                // increment number of likes
-                Log.d("DEBUG: ", Integer.toString(items.get(0).getNumLikes()));
-                items.get(0).setNumLikes(items.get(0).getNumLikes() + 1);
-                Log.d("DEBUG: ", Integer.toString(items.get(0).getNumLikes()));
-
-                // TODO: write back object to server to update # of likes
-                currentCard.setValue(items.get(0));
-
-                if (mLikeListener.get(ld.itemCounter) != null)
-                    databaseRef.child("cards").child("card" + Integer.toString(ld.itemCounter)).removeEventListener(mLikeListener.get(ld.itemCounter));
-                Log.d("DEBUG", "Listener removed");
-
-                // add this item to history
-                if (items.get(0).numLikes > 0){
-                    history.add(items.get(0));
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                int i = 0;
+                for (DataSnapshot child : dataSnapshot.getChildren()) {
+                    FoodItem newItem = child.getValue(FoodItem.class);
+                    newItem.id = i;
+                    items.add(newItem);
+                    i++;
                 }
 
-                // test history
-                // System.out.println(history.size());
+                Log.d("DEBUG: ", "Items size - " + Integer.toString(items.size()));
 
-                items.remove(0);
+                foodItemStartSize = items.size();
 
-                ld.itemCounter++;
-                ld.historyCounter++;
+                // sort pictures to determine order to display to user
 
-                myAppAdapter.notifyDataSetChanged();
+                storageRef.child("images/1.jpg").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                    @Override
+                    public void onSuccess(Uri uri) {
+                        // Got the download URL for 'users/me/profile.png'
+//                item2.setImageUrl(uri.toString());
+                    }
+                }).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception exception) {
+                        // Handle any errors
+                    }
+                });
+
+                mLikeListener = new ArrayList<>();
+
+                Log.d("DEBUG: ", Integer.toString(items.size()));
+                for (ld.listenerCount = 0; ld.listenerCount < foodItemStartSize; ld.listenerCount++) {
+                    DatabaseReference cardRef = databaseRef.child("cards").child("card" + Integer.toString(ld.listenerCount));
+                    // Add value event listener to the post
+                    // [START post_value_event_listener]
+                    ValueEventListener likeListener = new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            // Get Post object and use the values to update the UI
+                            FoodItem fi = dataSnapshot.getValue(FoodItem.class);
+                            Log.d("DEBUG: ", Integer.toString(fi.id) + "WAHOO THE DATA CHANGED!");
+                            Log.d("DEBUG: ", "WAHOO THE DATA CHANGED!" + Integer.toString(items.size()));
+                            //if (items.size() == foodItemStartSize)
+                            if (fi.id - (foodItemStartSize - items.size()) >= 0)
+                                // if (fi.id + items.size() >= foodItemStartSize)
+                                items.get(fi.id - (foodItemStartSize - items.size())).setNumLikes(fi.getNumLikes());
+                        }
+
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+                            // Getting Post failed, log a message
+                            Log.d("Like Listener: ", "Snapshot cancelled!");
+                        }
+                    };
+                    cardRef.addValueEventListener(likeListener);
+                    // [END post_value_event_listener]
+
+                    // Keep copy of post listener so we can remove it when app stops
+                    mLikeListener.add(likeListener);
+                }
+                ld.listenerCount = items.size() - 1;
+
+                flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
+                myAppAdapter = new MyAppAdapter(items, MainActivity.this);
+                flingContainer.setAdapter(myAppAdapter);
+                flingContainer.setFlingListener(new SwipeFlingAdapterView.onFlingListener() {
+                    @Override
+                    public void removeFirstObjectInAdapter() {
+
+                    }
+
+                    @Override
+                    public void onLeftCardExit(Object o) {
+
+                        if (mLikeListener.get(ld.itemCounter) != null)
+                            databaseRef.child("cards").child("card" + Integer.toString(ld.itemCounter)).removeEventListener(mLikeListener.get(ld.itemCounter));
+                        items.remove(0);
+
+                        ld.itemCounter++;
+
+                        myAppAdapter.notifyDataSetChanged();
+                    }
+
+                    @Override
+                    public void onRightCardExit(Object o) {
+
+                        DatabaseReference currentCard = databaseRef.child("cards").child("card"+Integer.toString(ld.itemCounter));
+
+                        // increment number of likes
+                        Log.d("DEBUG: ", Integer.toString(items.get(0).getNumLikes()));
+                        items.get(0).setNumLikes(items.get(0).getNumLikes() + 1);
+                        Log.d("DEBUG: ", Integer.toString(items.get(0).getNumLikes()));
+
+                        // TODO: write back object to server to update # of likes
+                        currentCard.setValue(items.get(0));
+
+                        if (mLikeListener.get(ld.itemCounter) != null)
+                            databaseRef.child("cards").child("card" + Integer.toString(ld.itemCounter)).removeEventListener(mLikeListener.get(ld.itemCounter));
+                        Log.d("DEBUG", "Listener removed");
+
+                        // add this item to history
+                        if (items.get(0).numLikes > 0){
+                            history.add(items.get(0));
+                        }
+
+                        // test history
+                        // System.out.println(history.size());
+
+                        items.remove(0);
+
+                        ld.itemCounter++;
+                        ld.historyCounter++;
+
+                        myAppAdapter.notifyDataSetChanged();
+                    }
+
+                    @Override
+                    public void onAdapterAboutToEmpty(int i) {
+
+                    }
+
+                    @Override
+                    public void onScroll(float v) {
+
+                    }
+                });
             }
 
             @Override
-            public void onAdapterAboutToEmpty(int i) {
-
-            }
-
-            @Override
-            public void onScroll(float v) {
+            public void onCancelled(DatabaseError databaseError) {
 
             }
         });
 
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Initialize current user
+        //final DatabaseReference localUser = databaseRef.child("users").child("user0");
+
+        // Initialize FoodItems
+        //Grab them from Firebase (snapshot?)
+        // Three test items in ArrayList<FoodItem>
+        //final FoodItem item1 = new FoodItem();
+        //item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
+        //item1.id = 0;
+        //final FoodItem item2 = new FoodItem();
+        //item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
+        //item2.id = 1;
+        //final FoodItem item3 = new FoodItem();
+        //item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
+        //item3.id = 2;
+
+        // Add cards
+        //items.add(item1);
+        //items.add(item2);
+        //items.add(item3);
+
+//        https://github.com/kikoso/Swipeable-Cards
+//        https://github.com/mikepenz/MaterialDrawer
     }
 
     @Override
