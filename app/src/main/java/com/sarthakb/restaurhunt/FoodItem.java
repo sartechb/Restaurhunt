@@ -13,6 +13,7 @@ import java.util.ArrayList;
  */
 
 public class FoodItem {
+    int id;
     String userLocation;
     double time;
     double price;
@@ -60,6 +61,14 @@ public class FoodItem {
 
         }
     };
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
 
     public String getUserLocation() {
         return userLocation;
@@ -132,4 +141,6 @@ public class FoodItem {
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
     }
+
+
 }

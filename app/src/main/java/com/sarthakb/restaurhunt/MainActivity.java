@@ -16,10 +16,15 @@ import android.content.Intent;
 import android.util.*;
 
 import java.io.File;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -35,18 +40,20 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity{
 
     SwipeFlingAdapterView flingContainer;
     ArrayList<FoodItem> items;
-    ArrayList<FoodItem> history; // ADDED THIS
+    ArrayList<FoodItem> history;
     MyAppAdapter myAppAdapter;
     private int PICK_IMAGE_REQUEST = 1;
     static FirebaseStorage storage;
     static StorageReference storageRef;
     static FirebaseDatabase database;
     static DatabaseReference databaseRef;
+    static DatabaseReference localUserRef;
 
 
     @Override
@@ -54,11 +61,14 @@ public class MainActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        items = new ArrayList<FoodItem>();
+        history = new ArrayList<FoodItem>();
+
         storage = FirebaseStorage.getInstance();
         storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
         database = FirebaseDatabase.getInstance();
         databaseRef = database.getReference();
-
+        localUserRef = databaseRef.child("user0");
 
         Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar_main);
         toolbar.setTitle("Restaurhunt");
@@ -66,32 +76,39 @@ public class MainActivity extends AppCompatActivity{
 
         flingContainer = (SwipeFlingAdapterView) findViewById(R.id.card_container);
 
-        // Initialize Firebase systems
-        storage = FirebaseStorage.getInstance();
-        databaseRef = FirebaseDatabase.getInstance().getReference();
-        storageRef = storage.getReferenceFromUrl("gs://restaurhunter.appspot.com");
+        // Read in initial FoodItems
+        ValueEventListener startListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                for (DataSnapshot child : dataSnapshot.getChildren()) {
+                    FoodItem newItem = (FoodItem) child.getValue(FoodItem.class);
+                    items.add(newItem);
+                }
+            }
 
-        // Initialize current user
-        final DatabaseReference localUser = databaseRef.child("users").child("user0");
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        };
+
+        databaseRef.child("cards").addListenerForSingleValueEvent(startListener);
+
 
         // Initialize FoodItems
         // Three test items in ArrayList<FoodItem>
-        final FoodItem item1 = new FoodItem();
-        item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
-        final FoodItem item2 = new FoodItem();
-        item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
-        final FoodItem item3 = new FoodItem();
-        item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
+//        final FoodItem item1 = new FoodItem();
+//        item1.setImageUrl("http://www.sarthakb.com/images/otriangles.png");
+//        final FoodItem item2 = new FoodItem();
+//        item2.setImageUrl("https://firebasestorage.googleapis.com/v0/b/restaurhunter.appspot.com/o/images%2F1.jpg?alt=media&token=83539e6e-4772-45b5-9fd3-d4d7cd45b148");
+//        final FoodItem item3 = new FoodItem();
+//        item3.setImageUrl("http://www.sarthakb.com/images/blueTriangles.png");
 
-        // Initialize card container
-        items = new ArrayList<>();
         // Add cards
-        items.add(item1);
-        items.add(item2);
-        items.add(item3);
+//        items.add(item1);
+//        items.add(item2);
+//        items.add(item3);
 
-        // Initialize local history card container
-        history = new ArrayList<>();
         
         // Initialize itemCounter and historyCounter
         final LocalData ld = new LocalData();
@@ -114,6 +131,7 @@ public class MainActivity extends AppCompatActivity{
                 // Handle any errors
             }
         });
+
 
 //        https://github.com/kikoso/Swipeable-Cards
 //        https://github.com/mikepenz/MaterialDrawer
@@ -221,7 +239,9 @@ public class MainActivity extends AppCompatActivity{
         if (requestCode == PICK_IMAGE_REQUEST) {
             if (resultCode == RESULT_OK) {
                 Uri file = data.getData();
-                StorageReference riversRef = storageRef.child("images/"+file.getLastPathSegment());
+                Random generator = new Random();
+                int i = generator.nextInt(100000);
+                StorageReference riversRef = storageRef.child("images/"+ Integer.toString(i) + "_" + file.getLastPathSegment());
                 UploadTask uploadTask = riversRef.putFile(file);
 
                 // Register observers to listen for when the download is done or if it fails
@@ -234,12 +254,25 @@ public class MainActivity extends AppCompatActivity{
                     @Override
                     public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                         // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
-                        Uri downloadUrl = taskSnapshot.getDownloadUrl();
+                        final Uri downloadUrl = taskSnapshot.getDownloadUrl();
                         if (downloadUrl != null) {
-                            FoodItem newItem = new FoodItem();
-                            newItem.setImageUrl(downloadUrl.toString());
-                            int last_index = downloadUrl.getPath().split("/").length - 1;
-                            databaseRef.child("cards/" + downloadUrl.getPath().split("/")[last_index]).setValue(newItem);
+                            // Get
+                            ValueEventListener getChildrenListener = new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                    FoodItem newItem = new FoodItem();
+                                    newItem.setImageUrl(downloadUrl.toString());
+                                    long numChildren = dataSnapshot.getChildrenCount();
+                                    newItem.setId((int)numChildren);
+                                    databaseRef.child("cards/card" + Long.toString(numChildren)).setValue(newItem);
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
+
+                                }
+                            };
+                            databaseRef.child("cards").addListenerForSingleValueEvent(getChildrenListener);
                         }
                     }
                 });
