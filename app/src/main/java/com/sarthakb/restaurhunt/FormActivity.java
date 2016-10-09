@@ -25,7 +25,7 @@ import java.util.Random;
 public class FormActivity extends Activity {
 
     EditText restName, loc, price;
-    Button upload;
+    Button upload, submit;
     final private int PICK_IMAGE_REQUEST = 1;
     private static FirebaseStorage storage;
     private static StorageReference storageRef;
@@ -46,6 +46,19 @@ public class FormActivity extends Activity {
         loc = (EditText) findViewById(R.id.etLoc);
         price = (EditText) findViewById(R.id.etPrice);
         upload = (Button) findViewById(R.id.btnUpload);
+        submit = (Button) findViewById(R.id.btnSubmit);
+
+
+        submit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String location = loc.getText().toString();
+                String thingPrice = price.getText().toString();
+                String restNameString = restName.getText().toString();
+                //TODO: BO DO FIREBASE THINGS HERE WITH THESE STRINGS
+            }
+        });
+
 
         upload.setOnClickListener(new View.OnClickListener() {
             @Override
