@@ -6,13 +6,14 @@ import android.net.Uri;
 
 import com.google.firebase.database.DatabaseReference;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  * Created by Sarthak on 10/8/16.
  */
 
-public class FoodItem {
+public class FoodItem implements Serializable{
     int id;
     String userLocation;
     double time;
